@@ -365,17 +365,7 @@
 
 .btn-info:hover { color: #94a3b8; }
 
-.demo-popover {
-  margin-top: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
-.demo-popover code { color: #94a3b8; font-size: 0.75rem; font-family: 'SF Mono', monospace; }
 
 .loader {
   width: 24px;

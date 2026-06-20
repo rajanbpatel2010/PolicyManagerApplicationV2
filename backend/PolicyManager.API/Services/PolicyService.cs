@@ -641,7 +641,7 @@ namespace PolicyManager.API.Services
                         PolicyHolderName = GetVal(1),
                         Email = GetVal(2),
                         PolicyTypeId = policyTypes.GetValueOrDefault(typeName, 1),
-                        FamilyMemberId = familyMembers.GetValueOrDefault(memberName),
+                        FamilyMemberId = familyMembers.TryGetValue(memberName, out var fId) ? fId : (int?)null,
                         PremiumAmount = decimal.TryParse(GetVal(4), out var p) ? p : 0,
                         StartDate = DateTime.TryParse(GetVal(5), out var s) ? s : DateTime.UtcNow,
                         EndDate = DateTime.TryParse(GetVal(6), out var e) ? e : DateTime.UtcNow.AddYears(1),
