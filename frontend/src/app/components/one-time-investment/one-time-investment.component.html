@@ -1,0 +1,184 @@
+<div class="page-container">
+  <div class="page-header mobile-aware-header">
+    <div class="header-main">
+      <h1 class="page-title">
+        One-Time Investments
+        <span class="offline-badge" *ngIf="isOffline">Offline</span>
+      </h1>
+      <p class="page-subtitle">Manage your single-payment insurance investments</p>
+    </div>
+  </div>
+  <div class="">
+    <!-- Stats Summary Bar -->
+    <div class="stats-summary-grid mb-lg">
+      <div class="stat-card glass-card">
+        <div class="stat-icon investment"><span class="material-icons-round">account_balance_wallet</span></div>
+        <div class="stat-info">
+          <span class="stat-label">Total Value</span>
+          <span class="stat-value">{{ stats.totalValue | inrCurrency }}</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-icon count"><span class="material-icons-round">list_alt</span></div>
+        <div class="stat-info">
+          <span class="stat-label">Total Investments</span>
+          <span class="stat-value">{{ stats.count }}</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card" [class.warning]="stats.maturedCount > 0">
+        <div class="stat-icon matured"><span class="material-icons-round">task_alt</span></div>
+        <div class="stat-info">
+          <span class="stat-label">Matured</span>
+          <span class="stat-value">{{ stats.maturedCount }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions desktop-only">
+      <button class="btn btn-secondary" (click)="exportToCsv()" [disabled]="loadingExport">
+        <span class="material-icons-round" *ngIf="!loadingExport">download</span>
+        <span class="spinner sm" *ngIf="loadingExport"></span>
+        {{ loadingExport ? 'Exporting...' : 'Export' }}
+      </button>
+      <button class="btn btn-secondary" (click)="toggleColumnSelector()">
+        <span class="material-icons-round">view_column</span>
+        Columns
+      </button>
+      <div class="column-dropdown glass-card" *ngIf="showColumnSelector">
+        <div class="column-option" *ngFor="let col of columns">
+          <label>
+            <input type="checkbox" [(ngModel)]="col.visible">
+            {{ col.label }}
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-primary" routerLink="/policies/new" *ngIf="authService.isAdmin()">
+        <span class="material-icons-round">add</span>
+        New Investment
+      </button>
+    </div>
+  </div>
+
+  <div class="search-filter-bar glass-card mb-lg">
+    <div class="search-input-wrap">
+      <span class="material-icons-round search-icon">search</span>
+      <input type="text" class="form-control-minimal" placeholder="Search investments..."
+        [(ngModel)]="filter.searchTerm" (input)="onSearch()">
+      <button class="btn-icon-sm" (click)="showAdvancedFilters = !showAdvancedFilters"
+        [class.active]="activeAdvancedFilterCount > 0">
+        <span class="material-icons-round">tune</span>
+      </button>
+    </div>
+
+    <div class="advanced-filters-panel" *ngIf="showAdvancedFilters">
+      <div class="filter-grid">
+        <div class="filter-item">
+          <label>Policy Type</label>
+          <select class="form-control"
+            (change)="filter.policyTypeIds = $any($event.target).value ? [+$any($event.target).value] : []; loadData()">
+            <option value="">All Types</option>
+            <option *ngFor="let type of policyTypes" [value]="type.id"
+              [selected]="filter.policyTypeIds?.includes(type.id)">{{ type.name }}</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Status</label>
+          <select class="form-control"
+            (change)="filter.statuses = $any($event.target).value ? [$any($event.target).value] : []; loadData()">
+            <option value="">Any</option>
+            <option value="Active" [selected]="filter.statuses?.includes('Active')">Active</option>
+            <option value="Expired" [selected]="filter.statuses?.includes('Expired')">Matured</option>
+            <option value="Cancelled" [selected]="filter.statuses?.includes('Cancelled')">Cancelled</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Family Member</label>
+          <select class="form-control"
+            (change)="filter.familyMemberIds = $any($event.target).value ? [+$any($event.target).value] : []; loadData()">
+            <option value="">All Members</option>
+            <option *ngFor="let m of familyMembers" [value]="m.id"
+              [selected]="filter.familyMemberIds?.includes(m.id)">{{ m.name }}</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Company</label>
+          <input type="text" class="form-control" placeholder="Insurace Co." [(ngModel)]="filter.companyName"
+            (input)="onSearch()">
+        </div>
+      </div>
+      <div class="filter-footer">
+        <button class="btn btn-secondary btn-sm" (click)="clearAllFilters()" *ngIf="hasAnyFilter()">
+          Clear Filters
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="showAdvancedFilters = false">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading investments...</p>
+  </div>
+
+  <div class="glass-card" *ngIf="!loading" style="padding:0;overflow:hidden">
+    <div class="scroll-container">
+      <table class="data-table" *ngIf="pagedResult && pagedResult.items.length > 0">
+        <thead>
+          <tr>
+            <th *ngFor="let col of visibleColumns" (click)="sortBy(col.field)" style="cursor:pointer">
+              {{ col.label }}
+              <span class="sort-icon">{{ getSortIcon(col.field) }}</span>
+            </th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let policy of pagedResult.items; trackBy: trackByPolicyId" class="policy-row">
+            <td *ngFor="let col of visibleColumns" [attr.data-label]="col.label">
+              <ng-container [ngSwitch]="col.field">
+                <span *ngSwitchCase="'premiumAmount'" class="amount-val">
+                  {{ policy.premiumAmount | inrCurrency }}
+                </span>
+                <span *ngSwitchCase="'status'" class="status-badge" [attr.data-status]="policy.status">
+                  {{ policy.status === 'Expired' ? 'Matured' : policy.status }}
+                </span>
+                <span *ngSwitchCase="'startDate'">{{ policy.startDate | date:'dd MMM yyyy' }}</span>
+                <span *ngSwitchCase="'maturityDate'">{{ policy.maturityDate | date:'dd MMM yyyy' }}</span>
+                <span *ngSwitchDefault>{{ $any(policy)[col.field] }}</span>
+              </ng-container>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="btn-icon" [routerLink]="['/policies', policy.id]" title="View Details">
+                  <span class="material-icons-round">visibility</span>
+                </button>
+                <button class="btn-icon" [routerLink]="['/policies', policy.id, 'edit']" *ngIf="authService.isAdmin()"
+                  title="Edit">
+                  <span class="material-icons-round">edit</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="no-data" *ngIf="pagedResult && pagedResult.items.length === 0">
+        <span class="material-icons-round">info</span>
+        <p>No one-time investments found.</p>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-bar" *ngIf="pagedResult && pagedResult.totalPages > 1">
+      <button class="btn-icon" [disabled]="!pagedResult.hasPreviousPage" (click)="changePage(filter.pageNumber! - 1)">
+        <span class="material-icons-round">chevron_left</span>
+      </button>
+      <span class="page-info">Page {{ pagedResult.pageNumber }} of {{ pagedResult.totalPages }}</span>
+      <button class="btn-icon" [disabled]="!pagedResult.hasNextPage" (click)="changePage(filter.pageNumber! + 1)">
+        <span class="material-icons-round">chevron_right</span>
+      </button>
+    </div>
+  </div>
+</div>

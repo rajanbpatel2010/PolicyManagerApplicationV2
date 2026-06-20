@@ -1,0 +1,147 @@
+<div class="forecast-container" cdkDropListGroup>
+  <div class="forecast-header">
+    <h3>{{ selectedMonth ? selectedMonth : 'Annual' }} Premium Forecast</h3>
+    <div class="header-actions">
+      <div class="column-selector-wrapper">
+        <button class="action-btn" (click)="toggleSelector()">
+          <span class="material-icons-round">view_column</span>
+          Columns
+        </button>
+        <div class="column-dropdown glass-card" *ngIf="showColumnSelector">
+          <div class="column-option" *ngFor="let col of columns">
+            <label>
+              <input type="checkbox" [(ngModel)]="col.visible">
+              {{ col.label }}
+            </label>
+          </div>
+        </div>
+      </div>
+      <button class="export-btn" (click)="exportToCsv()" [disabled]="forecasts.length === 0">
+        <span class="material-icons-round">file_download</span>
+        Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Grouping Drop Zone -->
+  <div id="groupingList"
+       class="grouping-zone glass-card" 
+       cdkDropList 
+       [cdkDropListConnectedTo]="['headersList']"
+       (cdkDropListDropped)="onDrop($event)">
+    <div class="zone-placeholder" *ngIf="!groupByField">
+      <span class="material-icons-round">drag_indicator</span>
+      Drag a column header here to group and summarize data
+    </div>
+    <div class="active-group" *ngIf="groupByField">
+      <span class="group-label">Grouped by: {{ groupByField }}</span>
+      <button class="remove-group" (click)="groupBy(null)">
+        <span class="material-icons-round">close</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr id="headersList"
+            cdkDropList 
+            cdkDropListOrientation="horizontal" 
+            [cdkDropListConnectedTo]="['groupingList']">
+          <th *ngFor="let col of visibleColumns">
+            <div class="header-content" 
+                 cdkDrag 
+                 [cdkDragData]="col.field">
+              {{ col.label }}
+              <span class="material-icons-round drag-handle">drag_indicator</span>
+              
+              <!-- Drag Preview -->
+              <div *cdkDragPreview class="drag-preview glass-card">
+                {{ col.label }}
+              </div>
+            </div>
+          </th>
+          <th *ngIf="groupByField === null" style="width: 50px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Ungrouped View -->
+        <ng-container *ngIf="!groupByField">
+          <tr *ngFor="let item of forecasts">
+            <td *ngFor="let col of visibleColumns" [attr.data-label]="col.label">
+              <ng-container [ngSwitch]="true">
+                <span *ngSwitchCase="col.isCurrency" class="amount">
+                  {{ getCurrencyValue(item, col.field) | inrCurrency }}
+                </span>
+                <span *ngSwitchCase="col.isDate">
+                  {{ getDateValue(item, col.field) | date:'dd MMM yyyy' }}
+                </span>
+                <span *ngSwitchCase="col.field === 'memberName'" class="member-badge">
+                  {{ item[col.field] }}
+                </span>
+                <span *ngSwitchCase="col.field === 'policyType'" class="type-badge">
+                  {{ item[col.field] }}
+                </span>
+                <span *ngSwitchDefault>
+                  {{ item[col.field] || '-' }}
+                </span>
+              </ng-container>
+            </td>
+          </tr>
+        </ng-container>
+
+        <!-- Grouped View -->
+        <ng-container *ngIf="groupByField">
+          <ng-container *ngFor="let group of groupedData">
+            <tr class="group-header-row" (click)="toggleGroup(group)">
+              <td [attr.colspan]="visibleColumns.length + (groupByField ? 0 : 1)">
+                <div class="group-header-content">
+                  <span class="material-icons-round collapse-icon" [class.collapsed]="group.isCollapsed">
+                    expand_more
+                  </span>
+                  <span class="group-title">{{ group.groupValue }}</span>
+                  <span class="group-count">({{ group.items.length }} policies)</span>
+                  <div class="group-summary">
+                    <span class="summary-label">Total: </span>
+                    <span class="summary-amount">{{ group.summary | inrCurrency }}</span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <ng-container *ngIf="!group.isCollapsed">
+              <tr *ngFor="let item of group.items" class="grouped-item-row">
+                <td *ngFor="let col of visibleColumns" [attr.data-label]="col.label">
+                  <ng-container [ngSwitch]="true">
+                    <span *ngSwitchCase="col.isCurrency" class="amount">
+                      {{ getCurrencyValue(item, col.field) | inrCurrency }}
+                    </span>
+                    <span *ngSwitchCase="col.isDate">
+                      {{ getDateValue(item, col.field) | date:'dd MMM yyyy' }}
+                    </span>
+                    <span *ngSwitchCase="col.field === 'memberName'" class="member-badge">
+                      {{ item[col.field] }}
+                    </span>
+                    <span *ngSwitchCase="col.field === 'policyType'" class="type-badge">
+                      {{ item[col.field] }}
+                    </span>
+                    <span *ngSwitchDefault>
+                      {{ item[col.field] || '-' }}
+                    </span>
+                  </ng-container>
+                </td>
+              </tr>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+      </tbody>
+
+      <tbody *ngIf="forecasts.length === 0">
+        <tr >
+          <td [attr.colspan]="visibleColumns.length" class="empty-state">
+            No installments due for {{ selectedMonth ? selectedMonth : 'the selected members' }}.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,23 @@
+<div class="member-selector-outer">
+  <div class="pill-group">
+    <button 
+      class="pill all-pill" 
+      [class.active]="isAllSelected" 
+      (click)="selectAll()">
+      <span class="avatar-circle">
+        <span class="material-icons-round">groups</span>
+      </span>
+      <span class="member-name">All Members</span>
+    </button>
+    
+    <button 
+      *ngFor="let member of members" 
+      class="pill" 
+      [class.active]="isSelected(member.name)"
+      [title]="member.relationship"
+      (click)="toggleMember(member.name)">
+      <span class="avatar-circle">{{ getInitials(member.name) }}</span>
+      <span class="member-name">{{ member.name }}</span>
+    </button>
+  </div>
+</div>
