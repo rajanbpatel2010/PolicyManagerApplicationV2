@@ -1,12 +1,11 @@
-services:
-  # Database Service
-  - type: psql
-    name: policy-manager-db
+databases:
+  - name: policy-manager-db
     plan: free # Change to standard/pro as needed
     region: ohio # Default region, can be changed
     databaseName: policymanagerv2
     user: postgres
 
+services:
   # Backend API Service
   - type: web
     name: policy-manager-api
