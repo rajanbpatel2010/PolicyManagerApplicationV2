@@ -2,8 +2,6 @@ databases:
   - name: policy-manager-db
     plan: free # Change to standard/pro as needed
     region: ohio # Default region, can be changed
-    databaseName: policymanagerv2
-    user: postgres
 
 services:
   # Backend API Service
@@ -33,7 +31,6 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist/policy-manager-app/browser # Ensure this matches your angular.json output path
     plan: free
-    region: ohio
     # For Angular SPA routing
     routes:
       - type: rewrite
