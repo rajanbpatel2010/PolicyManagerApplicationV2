@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PolicyManager.API.DTOs;
 using PolicyManager.API.Helpers;
 using PolicyManager.API.Services;
@@ -632,3 +633,45 @@ public class InvestmentForecastController : ControllerBase
         return Ok(ApiResponse<ForecastImpactDto>.SuccessResponse(result, result.ImpactSummary));
     }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN CONTROLLER
+// ═══════════════════════════════════════════════════════════════
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Policy = "AdminOnly")]
+public class AdminController : ControllerBase
+{
+    /// <summary>
+    /// Danger zone: Resets the database by wiping all user data and re-seeding.
+    /// </summary>
+    [HttpPost("reset-database")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResetDatabase([FromServices] PolicyManager.API.Data.AppDbContext db)
+    {
+        using var transaction = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.Payments);
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.PolicyDocuments);
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.PolicyReminderEvents);
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.InAppNotifications);
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.Policies.IgnoreQueryFilters());
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.MutualFunds.IgnoreQueryFilters());
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.FamilyMembers);
+            await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(db.PolicyReminderSettings);
+            
+            await transaction.CommitAsync();
+
+            await PolicyManager.API.Data.AppDbContext.SeedDataAsync(db);
+
+            return Ok(ApiResponse<bool>.SuccessResponse(true, "Database has been successfully wiped and re-seeded."));
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return BadRequest(ApiResponse<bool>.FailResponse($"Failed to reset database: {ex.Message}"));
+        }
+    }
+}
+
