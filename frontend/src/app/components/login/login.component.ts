@@ -130,15 +130,7 @@ import { ConfigService } from '../../services/config.service';
             <div class="form-footer">
               <p>New to PolicyManager? <a routerLink="/register">Create Account</a></p>
               
-              <button class="btn-info" (click)="showDemo = !showDemo">
-                <span class="material-icons-round">info</span>
-                Demo Access
-              </button>
-              
-              <div class="demo-popover" *ngIf="showDemo" [@expandCollapse]>
-                <code>rajanbpatel2017&#64;gmail.com</code>
-                <code>Admin&#64;123</code>
-              </div>
+
             </div>
           </div>
         </div>
@@ -153,7 +145,6 @@ export class LoginComponent {
   showPassword = false;
   canUseBiometric = false;
   showServerSettings = false;
-  showDemo = false;
   serverIp = '';
 
    constructor(
