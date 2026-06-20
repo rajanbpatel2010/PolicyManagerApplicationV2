@@ -28,6 +28,7 @@ services:
   - type: web
     name: policy-manager-ui
     env: static
+    rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist/policy-manager # Output directory of Angular build
     # For Angular SPA routing

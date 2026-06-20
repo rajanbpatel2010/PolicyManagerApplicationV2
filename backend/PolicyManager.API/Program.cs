@@ -24,6 +24,9 @@ try
     Log.Information($"AppContext.BaseDirectory: {AppContext.BaseDirectory}");
     Log.Information($"CurrentDirectory: {Directory.GetCurrentDirectory()}");
 
+    // Enable legacy timestamp behavior for easier migration from SQL Server's Unspecified DateTime
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
     Log.Information("Creating WebApplicationBuilder...");
     var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     {
@@ -97,9 +100,6 @@ try
         var port = uri.Port > 0 ? uri.Port : 5432;
         connectionString = $"Host={uri.Host};Port={port};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
     }
-
-    // Enable legacy timestamp behavior for easier migration from SQL Server's Unspecified DateTime
-    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(
