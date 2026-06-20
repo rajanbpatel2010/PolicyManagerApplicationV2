@@ -157,8 +157,8 @@ export class LoginComponent {
      private toast: ToastService
    ) {
      this.loginForm = this.fb.group({
-       email: ['', [Validators.required, Validators.email]],
-       password: ['', [Validators.required, Validators.minLength(6)]],
+       email: ['rajanbpatel2017@gmail.com', [Validators.required, Validators.email]],
+       password: ['Admin@123', [Validators.required, Validators.minLength(6)]],
        rememberMe: [false]
      });
    }
