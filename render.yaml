@@ -29,7 +29,7 @@ services:
     name: policy-manager-ui
     env: static
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist/policy-manager-app/browser # Ensure this matches your angular.json output path
+    staticPublishPath: ./dist/policy-manager # Output directory of Angular build
     # For Angular SPA routing
     routes:
       - type: rewrite
