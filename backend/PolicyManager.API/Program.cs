@@ -98,6 +98,9 @@ try
         connectionString = $"Host={uri.Host};Port={port};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
     }
 
+    // Enable legacy timestamp behavior for easier migration from SQL Server's Unspecified DateTime
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(
             connectionString,
