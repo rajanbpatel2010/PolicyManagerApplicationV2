@@ -30,7 +30,6 @@ services:
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist/policy-manager-app/browser # Ensure this matches your angular.json output path
-    plan: free
     # For Angular SPA routing
     routes:
       - type: rewrite
