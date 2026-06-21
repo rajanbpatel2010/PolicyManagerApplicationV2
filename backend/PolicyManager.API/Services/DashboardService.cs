@@ -266,7 +266,7 @@ namespace PolicyManager.API.Services
             decimal total = 0;
             foreach (var p in policies)
             {
-                total += GetCurrentFYBudgetAsync(p, fyStart, fyEnd);
+                total += CalculateYearlyPremiumForFY(p, fyStart, fyEnd);
             }
             return total;
         }
