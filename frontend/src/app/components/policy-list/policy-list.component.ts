@@ -1,5 +1,6 @@
-import { Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpEvent, HttpEventType } from '@angular/common/http';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -86,12 +87,17 @@ import { EmptyStateComponent } from '../shared/empty-state/empty-state.component
               <span class="material-icons-round">download</span>
               Template
             </button>
-            <button class="btn btn-secondary" (click)="excelInput.click()" [disabled]="uploadingExcel" title="Import Excel">
-              <span class="material-icons-round" *ngIf="!uploadingExcel">upload_file</span>
-              <span class="spinner sm" *ngIf="uploadingExcel"></span>
-              Import
-            </button>
-            <input type="file" #excelInput style="display:none" (change)="onExcelSelected($event)" accept=".xlsx, .xls">
+            <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
+              <button class="btn btn-secondary" (click)="excelInput.click()" [disabled]="uploadingExcel" title="Import Excel">
+                <span class="material-icons-round" *ngIf="!uploadingExcel">upload_file</span>
+                <span class="spinner sm" *ngIf="uploadingExcel"></span>
+                Import <span *ngIf="uploadingExcel && uploadProgress > 0"> ({{uploadProgress}}%)</span>
+              </button>
+              <input type="file" #excelInput style="display:none" (change)="onExcelSelected($event)" accept=".xlsx, .xls, .csv">
+              <div *ngIf="uploadingExcel" style="width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px; overflow: hidden; position: absolute; bottom: -8px;">
+                <div [style.width.%]="uploadProgress" style="height: 100%; background: var(--color-primary); transition: width 0.3s ease;"></div>
+              </div>
+            </div>
             
             <button class="btn btn-secondary" (click)="exportToExcel()" [disabled]="loadingExport" title="Export Selected Columns">
               <span class="material-icons-round" *ngIf="!loadingExport">table_view</span>
@@ -637,10 +643,13 @@ import { EmptyStateComponent } from '../shared/empty-state/empty-state.component
   styleUrl: './policy-list.component.css'
 })
 export class PolicyListComponent implements OnInit {
+  @ViewChild('excelInput') excelInput!: ElementRef;
+  
   pagedResult: PagedResult<Policy> | null = null;
   policyTypes: PolicyType[] = [];
   loading = true;
   uploadingExcel = false;
+  uploadProgress: number = 0;
   showDeleteModal = false;
   policyToDelete: Policy | null = null;
   searchTimeout: any;
@@ -1602,30 +1611,36 @@ export class PolicyListComponent implements OnInit {
     if (!file) return;
 
     this.uploadingExcel = true;
+    this.uploadProgress = 0;
     this.policyService.uploadExcel(file).subscribe({
-      next: (res) => {
-        this.uploadingExcel = false;
-        if (res.success) {
-          const result = res.data as any;
-          // Use the detailed summary message from backend
-          this.toast.success(res.message);
+      next: (event: HttpEvent<any>) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          this.uploadProgress = Math.round(100 * event.loaded / (event.total || 1));
+        } else if (event.type === HttpEventType.Response) {
+          this.uploadingExcel = false;
+          const res = event.body;
+          if (res.success) {
+            const result = res.data as any;
+            this.toast.success(res.message);
 
-          if (result.errors && result.errors.length > 0) {
-            this.toast.info(`Note: ${result.failedCount} rows had issues.`);
-            result.errors.slice(0, 3).forEach((err: string) => this.toast.error(err));
+            if (result.errors && result.errors.length > 0) {
+              this.toast.info(`Note: ${result.failedCount} rows had issues.`);
+              result.errors.slice(0, 3).forEach((err: string) => this.toast.error(err));
+            }
+
+            if (result.importedPolicyNumbers?.length > 0) {
+              console.log('Successfully Imported Policies:', result.importedPolicyNumbers);
+            }
+
+            this.loadPolicies();
+          } else {
+            this.toast.error(res.message || 'Upload failed');
           }
-
-          if (result.importedPolicyNumbers?.length > 0) {
-            console.log('Successfully Imported Policies:', result.importedPolicyNumbers);
-          }
-
-          this.loadPolicies();
-        } else {
-          this.toast.error(res.message || 'Upload failed');
         }
       },
       error: (err) => {
         this.uploadingExcel = false;
+        this.uploadProgress = 0;
         this.toast.error('Error uploading file');
         console.error(err);
       }

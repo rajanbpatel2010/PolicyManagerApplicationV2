@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { HttpEvent, HttpEventType } from '@angular/common/http';
 import {
     ApiResponse, PagedResult, Policy, CreatePolicy, UpdatePolicy,
     PolicyFilter, PolicyType, Dashboard, AuditLog, Payment, CreatePayment,
@@ -52,10 +53,13 @@ export class PolicyService {
         return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/${id}`);
     }
 
-    uploadExcel(file: File): Observable<ApiResponse<any>> {
+    uploadExcel(file: File): Observable<HttpEvent<any>> {
         const formData = new FormData();
         formData.append('file', file, file.name);
-        return this.http.post<ApiResponse<any>>(`${this.baseUrl}/upload`, formData);
+        return this.http.post<ApiResponse<any>>(`${this.baseUrl}/upload`, formData, {
+            reportProgress: true,
+            observe: 'events'
+        });
     }
 
     getMyPolicies(): Observable<ApiResponse<Policy[]>> {

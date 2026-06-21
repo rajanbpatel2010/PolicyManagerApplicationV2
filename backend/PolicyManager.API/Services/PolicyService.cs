@@ -548,10 +548,32 @@ namespace PolicyManager.API.Services
 
         public async Task<byte[]> ExportPoliciesToCsvAsync(PolicyFilterDto filter)
         {
+            // Bypass pagination to export all matching policies
+            filter.PageNumber = 1;
+            filter.PageSize = int.MaxValue;
             var result = await GetPoliciesAsync(filter);
+            
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Policy Number,Holder,Premium,Status");
-            foreach (var p in result.Items) sb.AppendLine($"{p.PolicyNumber},{p.PolicyHolderName},{p.PremiumAmount},{p.Status}");
+            // Export all columns expected by the import process
+            sb.AppendLine("Policy Number,PolicyHolderName,Email,PolicyType,PremiumAmount,StartDate,EndDate,NextInstallmentDate,InstallmentType");
+            
+            foreach (var p in result.Items) 
+            {
+                var row = new[] {
+                    p.PolicyNumber,
+                    p.PolicyHolderName,
+                    p.Email,
+                    p.PolicyTypeName,
+                    p.PremiumAmount.ToString("0.##"),
+                    p.StartDate.ToString("yyyy-MM-dd"),
+                    p.EndDate.ToString("yyyy-MM-dd"),
+                    p.NextInstallmentDate?.ToString("yyyy-MM-dd") ?? "",
+                    p.InstallmentType ?? ""
+                };
+                // Escape commas and quotes for CSV
+                sb.AppendLine(string.Join(",", row.Select(x => $"\"{x?.Replace("\"", "\"\"")}\"")));
+            }
+            
             return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
         }
 
@@ -603,11 +625,22 @@ namespace PolicyManager.API.Services
 
             if (dataTable.Rows.Count <= 1) return ApiResponse<ExcelUploadResultDto>.FailResponse("No data rows found.");
 
-            // Performance Optimization: Pre-load existing policy numbers to avoid N database calls
-            var policyList = await _context.Policies
-                .Select(p => p.PolicyNumber)
-                .ToListAsync();
-            var existingPolicyNumbers = policyList.ToHashSet();
+            int planIdIdx = -1;
+            for (int j = 0; j < dataTable.Columns.Count; j++)
+            {
+                var header = dataTable.Rows[0][j]?.ToString()?.Trim().ToLower();
+                if (header == "planid" || header == "plan id")
+                {
+                    planIdIdx = j;
+                    break;
+                }
+            }
+
+            // Performance Optimization: Pre-load existing policies for upsert logic
+            var policyList = await _context.Policies.ToListAsync();
+            var existingPolicies = policyList
+                .GroupBy(p => p.PolicyNumber.ToLower())
+                .ToDictionary(g => g.Key, g => g.First());
 
             var policyTypes = await _context.PolicyTypes.ToDictionaryAsync(t => t.Name.ToLower(), t => t.Id);
             var familyMembers = await _context.FamilyMembers.ToDictionaryAsync(m => m.Name.ToLower(), m => m.Id);
@@ -622,18 +655,37 @@ namespace PolicyManager.API.Services
                 try
                 {
                     var policyNumber = GetVal(0);
-                    if (string.IsNullOrEmpty(policyNumber)) continue;
+                    var holderName = GetVal(1);
+                    var startDateStr = GetVal(5);
+                    var planId = planIdIdx >= 0 ? GetVal(planIdIdx) : string.Empty;
 
-                    // Optimized duplicate check
-                    if (existingPolicyNumbers.Contains(policyNumber))
+                    if (string.IsNullOrEmpty(holderName) && string.IsNullOrEmpty(planId) && string.IsNullOrEmpty(policyNumber) && string.IsNullOrEmpty(startDateStr))
+                        continue;
+
+                    if (string.IsNullOrEmpty(policyNumber) && !string.IsNullOrEmpty(planId))
                     {
+                        policyNumber = planId;
+                    }
+
+                    if (string.IsNullOrEmpty(policyNumber))
+                    {
+                        result.FailedCount++;
+                        result.Errors.Add($"Row {i + 1}: Policy Number and Plan ID are missing.");
+                        continue;
+                    }
+
+                    var policyNumberLower = policyNumber.ToLower();
+
+                    var typeName = GetVal(3).ToLower();
+                    var memberName = holderName.ToLower();
+
+                    if (existingPolicies.ContainsKey(policyNumberLower))
+                    {
+                        // Skip if policy already exists
                         result.SkippedCount++;
                         result.Errors.Add($"Row {i + 1}: Policy {policyNumber} already exists.");
                         continue;
                     }
-
-                    var typeName = GetVal(3).ToLower();
-                    var memberName = GetVal(1).ToLower();
 
                     var policy = new Policy
                     {
@@ -642,10 +694,10 @@ namespace PolicyManager.API.Services
                         Email = GetVal(2),
                         PolicyTypeId = policyTypes.GetValueOrDefault(typeName, 1),
                         FamilyMemberId = familyMembers.TryGetValue(memberName, out var fId) ? fId : (int?)null,
-                        PremiumAmount = decimal.TryParse(GetVal(4), out var p) ? p : 0,
-                        StartDate = DateTime.TryParse(GetVal(5), out var s) ? s : DateTime.UtcNow,
-                        EndDate = DateTime.TryParse(GetVal(6), out var e) ? e : DateTime.UtcNow.AddYears(1),
-                        NextInstallmentDate = DateTime.TryParse(GetVal(7), out var n) ? n : null,
+                        PremiumAmount = decimal.TryParse(GetVal(4), out var p2) ? p2 : 0,
+                        StartDate = DateTime.TryParse(GetVal(5), out var s2) ? s2 : DateTime.UtcNow,
+                        EndDate = DateTime.TryParse(GetVal(6), out var e2) ? e2 : DateTime.UtcNow.AddYears(1),
+                        NextInstallmentDate = DateTime.TryParse(GetVal(7), out var n2) ? n2 : null,
                         InstallmentType = GetVal(8),
                         Status = PolicyConstants.StatusActive,
                         CreatedByUserId = userId,
@@ -653,7 +705,7 @@ namespace PolicyManager.API.Services
                     };
 
                     policiesToInsert.Add(policy);
-                    existingPolicyNumbers.Add(policyNumber); // Add to local hashset for this batch
+                    existingPolicies[policyNumberLower] = policy; // Prevent duplicates within the same batch
                     result.ImportedCount++;
                 }
                 catch (Exception ex)
