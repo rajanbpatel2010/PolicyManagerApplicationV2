@@ -266,7 +266,7 @@ namespace PolicyManager.API.Services
             decimal total = 0;
             foreach (var p in policies)
             {
-                total += CalculateBudgetForRange(p, fyStart, fyEnd);
+                total += GetCurrentFYBudgetAsync(p, fyStart, fyEnd);
             }
             return total;
         }
@@ -328,6 +328,80 @@ namespace PolicyManager.API.Services
             return total;
         }
 
+        private decimal CalculateYearlyPremiumForFY(Policy p, DateTime fyStart, DateTime fyEnd)
+        {
+            if (p.Status != PolicyConstants.StatusActive)
+            {
+                return 0;
+            }
+
+            decimal premium = p.PremiumAmount;
+            if (premium <= 0) return 0;
+
+            string instType = (p.InstallmentType ?? "").ToLower();
+            DateTime? start = p.StartDate;
+            DateTime? end = p.EndDate;
+            DateTime? nextInst = p.NextInstallmentDate;
+
+            if (start.HasValue && start.Value.Year < 1900) return 0;
+            if (end.HasValue && end.Value.Year < 1900) return 0;
+            if (nextInst.HasValue && nextInst.Value.Year < 1900) return 0;
+
+            if (instType == PolicyConstants.InstallmentOneTime.ToLower() || instType == "single" || string.IsNullOrEmpty(p.InstallmentType))
+            {
+                if (start.HasValue && start.Value >= fyStart && start.Value <= fyEnd)
+                {
+                    return premium;
+                }
+                return 0;
+            }
+
+            DateTime firstInstallmentDate;
+            if (nextInst.HasValue)
+            {
+                firstInstallmentDate = nextInst.Value;
+            }
+            else if (start.HasValue)
+            {
+                firstInstallmentDate = start.Value;
+            }
+            else
+            {
+                return 0;
+            }
+
+            decimal total = 0;
+            DateTime currentDue = firstInstallmentDate;
+            
+            if (start.HasValue && start.Value < currentDue)
+            {
+                currentDue = start.Value;
+            }
+
+            int iterations = 0;
+            while (currentDue <= fyEnd && (!end.HasValue || currentDue <= end.Value) && iterations < 1000)
+            {
+                iterations++;
+                if (currentDue >= fyStart)
+                {
+                    total += premium;
+                }
+
+                currentDue = instType switch
+                {
+                    "monthly" => currentDue.AddMonths(1),
+                    "quarterly" => currentDue.AddMonths(3),
+                    "half-yearly" => currentDue.AddMonths(6),
+                    "yearly" => currentDue.AddYears(1),
+                    _ => currentDue.AddYears(100)
+                };
+                
+                if (instType == PolicyConstants.InstallmentOneTime.ToLower() || instType == "single") break;
+            }
+
+            return total;
+        }
+        
         private async Task<List<MonthlyForecastDto>> GetMonthlyForecastsAsync(string[] selectedMembers)
         {
             var (fyStart, fyEnd) = FYHelper.GetCurrentFYRange();
