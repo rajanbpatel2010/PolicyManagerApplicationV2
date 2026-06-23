@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import {
     ApiResponse, AuthResponse, LoginRequest, RegisterRequest,
-    User
+    User, RequestLoginHistory
 } from '../models/models';
 import { ConfigService } from './config.service';
 
@@ -39,6 +39,10 @@ export class AuthService {
 
     getProfile(): Observable<ApiResponse<User>> {
         return this.http.get<ApiResponse<User>>(`${this.config.getApiUrl()}/auth/profile`);
+    }
+
+    getLoginHistory(): Observable<ApiResponse<RequestLoginHistory[]>> {
+        return this.http.get<ApiResponse<RequestLoginHistory[]>>(`${this.config.getApiUrl()}/auth/login-history`);
     }
 
     logout(): void {

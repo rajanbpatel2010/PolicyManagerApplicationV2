@@ -47,6 +47,10 @@ import { NotificationItem } from '../../models/models';
             <span class="material-icons-round">auto_awesome</span>
             <span>Intelligence AI</span>
           </a>
+          <a *ngIf="authService.isAdmin()" routerLink="/login-history" routerLinkActive="active" class="nav-link">
+            <span class="material-icons-round">history</span>
+            <span>Login History</span>
+          </a>
         </div>
 
         <div class="nav-user">
@@ -368,6 +372,47 @@ import { NotificationItem } from '../../models/models';
       .nav-fab:active { transform: scale(0.9); }
       .nav-fab span { font-size: 32px !important; }
     }
+
+    /* ── Notifications Panel ── */
+    .panel-header {
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .panel-header h4 { margin: 0; font-size: 1rem; color: var(--text-main); font-weight: 600; }
+    .btn-text-sm { background: none; border: none; color: var(--action-primary); cursor: pointer; font-size: 0.8rem; font-weight: 500; }
+    .panel-body {
+      max-height: 350px;
+      overflow-y: auto;
+    }
+    .notif-item {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background: rgba(255, 255, 255, 0.05); }
+    .notif-item.unread { background: rgba(208, 188, 255, 0.05); border-left: 3px solid var(--action-primary); }
+    .notif-icon-wrap {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+    .notif-icon-wrap.notif-installment { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .notif-icon-wrap.notif-expiry { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .notif-icon-wrap.notif-payment { background: rgba(34,197,94,0.1); color: #22c55e; }
+    .notif-icon-wrap.notif-system { background: rgba(168,85,247,0.1); color: #a855f7; }
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-title { font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-bottom: 4px; white-space: normal; }
+    .notif-msg { color: var(--text-muted); font-size: 0.75rem; line-height: 1.4; word-wrap: break-word; white-space: normal; }
 
   `]
 })

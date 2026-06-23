@@ -18,7 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
     public DbSet<MutualFund> MutualFunds => Set<MutualFund>();
-
+    public DbSet<RequestLoginHistory> RequestLoginHistories => Set<RequestLoginHistory>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

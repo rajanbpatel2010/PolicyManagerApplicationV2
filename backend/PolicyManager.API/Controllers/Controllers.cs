@@ -30,7 +30,8 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<AuthResponseDto>.FailResponse("Validation failed",
                 ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()));
 
-        var result = await _authService.LoginAsync(dto);
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await _authService.LoginAsync(dto, ipAddress);
         return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(result, "Login successful"));
     }
 
@@ -74,6 +75,17 @@ public class AuthController : ControllerBase
     {
         var users = await _authService.GetAllUsersAsync();
         return Ok(ApiResponse<List<UserDto>>.SuccessResponse(users));
+    }
+
+    /// <summary>
+    /// Admin-only: Get login history.
+    /// </summary>
+    [HttpGet("login-history")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<ApiResponse<List<RequestLoginHistory>>>> GetLoginHistory()
+    {
+        var history = await _authService.GetLoginHistoryAsync();
+        return Ok(ApiResponse<List<RequestLoginHistory>>.SuccessResponse(history));
     }
 }
 

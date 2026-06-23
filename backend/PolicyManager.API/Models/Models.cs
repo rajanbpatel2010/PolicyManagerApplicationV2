@@ -336,3 +336,25 @@ public class PolicyReminderSetting
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }
+
+/// <summary>
+/// Tracks all incoming login requests.
+/// </summary>
+public class RequestLoginHistory
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required, StringLength(1000)]
+    public string Email { get; set; } = string.Empty;
+
+    public DateTime LoginTime { get; set; } = DateTime.UtcNow;
+
+    [StringLength(50)]
+    public string? IpAddress { get; set; }
+
+    public bool IsSuccess { get; set; }
+    
+    [StringLength(500)]
+    public string? FailureReason { get; set; }
+}

@@ -107,6 +107,13 @@ export const routes: Routes = [
             import('./components/manual-email-messenger/manual-email-messenger.component').then(m => m.ManualEmailMessengerComponent)
     },
     {
+        path: 'login-history',
+        canActivate: [authGuard],
+        data: { adminOnly: true },
+        loadComponent: () =>
+            import('./components/login-history/login-history.component').then(m => m.LoginHistoryComponent)
+    },
+    {
         path: '**',
         redirectTo: 'dashboard'
     }

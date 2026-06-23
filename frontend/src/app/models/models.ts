@@ -448,3 +448,12 @@ export interface NotificationSummary {
     unreadCount: number;
     recent: NotificationItem[];
 }
+
+export interface RequestLoginHistory {
+    id: number;
+    email: string;
+    loginTime: string;
+    ipAddress?: string;
+    isSuccess: boolean;
+    failureReason?: string;
+}

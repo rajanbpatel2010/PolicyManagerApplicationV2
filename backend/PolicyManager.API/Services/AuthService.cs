@@ -9,10 +9,11 @@ namespace PolicyManager.API.Services
 {
     public interface IAuthService
     {
-        Task<AuthResponseDto> LoginAsync(LoginDto dto);
+        Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ipAddress = null);
         Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
         Task<List<UserDto>> GetAllUsersAsync();
         Task<UserDto?> GetUserByIdAsync(int id);
+        Task<List<RequestLoginHistory>> GetLoginHistoryAsync();
     }
 
     public class AuthService : IAuthService
@@ -31,15 +32,33 @@ namespace PolicyManager.API.Services
             _logger = logger;
         }
 
-        public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+        public async Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ipAddress = null)
         {
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == dto.Email && u.IsActive);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            {
+                _context.RequestLoginHistories.Add(new RequestLoginHistory
+                {
+                    Email = dto.Email,
+                    IpAddress = ipAddress,
+                    IsSuccess = false,
+                    FailureReason = "Invalid email or password"
+                });
+                await _context.SaveChangesAsync();
                 throw new UnauthorizedAccessException("Invalid email or password.");
+            }
 
             user.LastLoginAt = DateTime.UtcNow;
+            
+            _context.RequestLoginHistories.Add(new RequestLoginHistory
+            {
+                Email = dto.Email,
+                IpAddress = ipAddress,
+                IsSuccess = true
+            });
+
             await _context.SaveChangesAsync();
 
             var token = JwtHelper.GenerateToken(user.Id, user.Email, user.FullName, user.Role, _configuration, dto.RememberMe);
@@ -103,6 +122,14 @@ namespace PolicyManager.API.Services
         {
             var user = await _context.Users.FindAsync(id);
             return user != null ? _mapper.Map<UserDto>(user) : null;
+        }
+
+        public async Task<List<RequestLoginHistory>> GetLoginHistoryAsync()
+        {
+            return await _context.RequestLoginHistories
+                .OrderByDescending(x => x.LoginTime)
+                .Take(200)
+                .ToListAsync();
         }
     }
 }
