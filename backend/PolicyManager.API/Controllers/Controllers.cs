@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PolicyManager.API.DTOs;
 using PolicyManager.API.Helpers;
 using PolicyManager.API.Services;
+using PolicyManager.API.Models;
 
 namespace PolicyManager.API.Controllers;
 
